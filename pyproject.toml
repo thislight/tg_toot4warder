@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "tg_toot4warder"
+version = "0.1.0-alpha.0"
+description = "Forwarding your toots to telegram channel"
+authors = ["thisLight <l1589002388@gmail.com>"]
+license = "AGPL-3.0-or-later"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+python-telegram-bot = {extras = ["ujson"], version = "^13.5"}
+httpx = "^0.18.1"
+python-dateutil = "^2.8.1"
+beautifulsoup4 = "^4.9.3"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.812"
+black = "^21.5b2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
