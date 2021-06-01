@@ -11,6 +11,7 @@ python-telegram-bot = {extras = ["ujson"], version = "^13.5"}
 httpx = "^0.18.1"
 python-dateutil = "^2.8.1"
 beautifulsoup4 = "^4.9.3"
+click = "^8.0.1"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.812"
