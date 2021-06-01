@@ -1,14 +1,15 @@
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from os import link
 from typing import Any, Iterator, Union
+
+import arrow
+import dateutil.parser
+from bs4 import BeautifulSoup
 from httpx import Client
-from datetime import datetime, timedelta
 from telegram.chat import Chat
 from telegram.ext import Updater
 from telegram.ext.callbackcontext import CallbackContext
-import dateutil.parser
-from bs4 import BeautifulSoup
 
 A_MINUTE = 60
 
@@ -25,7 +26,7 @@ class MastodonUser(object):
 @dataclass
 class Toot(object):
     id: str
-    created_at: datetime
+    created_at: arrow.Arrow
     content: str
     url: str
 
@@ -39,9 +40,9 @@ def get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
     for el in statuses_response:
         yield Toot(
             id=el["id"],
-            created_at=dateutil.parser.isoparse(el["created_at"]),
+            created_at=arrow.get(el['created_at']),
             content=el["content"],
-            url=el['url'],
+            url=el["url"],
         )
 
 
@@ -55,12 +56,12 @@ class TootForwarderBot(object):
         self.tg_bot_token = tg_bot_token
         self.target_chat_identifier = target_chat_identifier
         self.mastodon_user = mastodon_user
-        self.last_checked_time = datetime.utcnow()
+        self.last_checked_time = arrow.utcnow()
         super().__init__()
 
 
 def exact_all_text_from_html(s: str):
-    soup = BeautifulSoup(s, 'html.parser')
+    soup = BeautifulSoup(s, "html.parser")
     return soup.get_text()
 
 
@@ -68,21 +69,30 @@ def _make_checking_and_forwarding_job_callback(
     bot: TootForwarderBot, target_chat: Chat
 ):
     def _checking_and_forwarding_job(ctx: CallbackContext):
-        _logger.info("Checking new toots. Last checked time: {}.".format(repr(bot.last_checked_time)))
+        _logger.info(
+            "Checking new toots. Last checked time: {}.".format(
+                repr(bot.last_checked_time)
+            )
+        )
         total, forwarded, skipped = 0, 0, 0
         for toot in get_latest_toots(bot.mastodon_user):
             total += 1
-            if toot.created_at > datetime.now(toot.created_at.tzinfo):
-                _logger.info("Forwarding {}.".format(toot))
+            logging.debug("Processing toot: %s", toot)
+            if toot.created_at > bot.last_checked_time:
+                _logger.info("Forwarding %s.", toot)
                 forwarded += 1
                 target_chat.send_message(
-                    "{content}\n\n{link}".format(content=exact_all_text_from_html(toot.content), link=toot.url),
+                    "{content}\n\n{link}".format(
+                        content=exact_all_text_from_html(toot.content), link=toot.url
+                    ),
                     disable_notification=True,
                 )
+                bot.last_checked_time = toot.created_at
             else:
                 skipped += 1
-        bot.last_checked_time = datetime.utcnow()
-        _logger.info("Done! Total/Forwarded/Skipped: {}/{}/{}.".format(total, forwarded, skipped))
+        _logger.info(
+            "Done! Total/Forwarded/Skipped: {}/{}/{}.".format(total, forwarded, skipped)
+        )
 
     return _checking_and_forwarding_job
 
