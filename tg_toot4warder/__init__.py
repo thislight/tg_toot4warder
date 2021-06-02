@@ -90,6 +90,7 @@ class TootForwarderBot(object):
         mastodon_user: MastodonUser,
         *,
         disable_notification: bool = True,
+        toots_polling_interval: int = 60, # in seconds
     ) -> None:
         self.tg_bot_token = tg_bot_token
         self.target_chat_identifier = target_chat_identifier
@@ -97,6 +98,7 @@ class TootForwarderBot(object):
         self.last_checked_time = arrow.utcnow()
         self.mastodon_remote_available = False
         self.disable_notification = disable_notification
+        self.toots_polling_interval = toots_polling_interval
         super().__init__()
 
 
@@ -180,7 +182,7 @@ def create_updater(bot: TootForwarderBot) -> Updater:
     job_queue = updater.job_queue
     job_queue.run_repeating(
         _make_checking_and_forwarding_job_callback(bot, target_chat),
-        A_MINUTE,
+        bot.toots_polling_interval,
     )
 
     return updater

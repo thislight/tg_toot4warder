@@ -48,10 +48,18 @@ import logging
 @click.option(
     "--disable-notification/--enable-notification",
     "disable_notification",
-    help="should the telegram message have notification",
+    help="Should the telegram message have notification. (accept environment variable DISABLE_NOTIFICATION)",
     type=bool,
     default=True,
     envvar="DISABLE_NOTIFICATION",
+)
+@click.option(
+    "--toots-polling-interval",
+    "toots_polling_interval",
+    type=int,
+    help="The polling interval in seconds for toots, the default is 60. (accept environment variable TOOTS_POLLING_INTERVAL)",
+    envvar="TOOTS_POLLING_INTERVAL",
+    default=60,
 )
 def toot4warder(
     mastodon_instance,
@@ -60,6 +68,7 @@ def toot4warder(
     target_chat_id,
     verbose: bool,
     disable_notification: bool,
+    toots_polling_interval: int,
 ):
     logging.basicConfig(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -74,6 +83,7 @@ def toot4warder(
         target_chat_id,
         user,
         disable_notification=disable_notification,
+        toots_polling_interval=toots_polling_interval,
     )
     updater = create_updater(bot)
     updater.start_polling()
