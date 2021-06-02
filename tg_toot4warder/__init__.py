@@ -137,7 +137,6 @@ def _make_checking_and_forwarding_job_callback(
         total, forwarded, skipped = 0, 0, 0
         try:
             toots_iter = get_latest_toots(bot.mastodon_user)
-            bot.mastodon_remote_available = True
             for toot in toots_iter:
                 total += 1
                 logging.debug("Processing toot: %s", toot)
@@ -154,6 +153,7 @@ def _make_checking_and_forwarding_job_callback(
                     bot.last_checked_time = toot.created_at
                 else:
                     skipped += 1
+            bot.mastodon_remote_available = True
         except MastodonRemoteUnavailable as e:
             if (
                 bot.mastodon_remote_available
