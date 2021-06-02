@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from os import link
 from typing import Any, Iterator, Union
 
 import arrow
@@ -45,29 +44,39 @@ def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
         )
         statuses_http_response.raise_for_status()
     except httpx.TimeoutException as e:
-        raise MastodonRemoteUnavailable(str(user.api_http_client.base_url), 'timeout') from e
+        raise MastodonRemoteUnavailable(
+            str(user.api_http_client.base_url), "timeout"
+        ) from e
     except httpx.NetworkError as e:
-        raise MastodonRemoteUnavailable(str(user.api_http_client.base_url), 'network') from e
+        raise MastodonRemoteUnavailable(
+            str(user.api_http_client.base_url), "network"
+        ) from e
     except httpx.HTTPStatusError as e:
-        raise MastodonRemoteUnavailable(str(user.api_http_client.base_url), 'http_status') from e
+        raise MastodonRemoteUnavailable(
+            str(user.api_http_client.base_url), "http_status"
+        ) from e
     statuses_response: list[dict[str, Any]] = statuses_http_response.json()
     assert isinstance(statuses_response, list)
     for el in statuses_response:
         yield Toot(
             id=el["id"],
-            created_at=arrow.get(el['created_at']),
+            created_at=arrow.get(el["created_at"]),
             content=el["content"],
             url=el["url"],
         )
 
 
-def get_latest_toots(user: MastodonUser, *, retries:int=3) -> Iterator[Toot]:
+def get_latest_toots(user: MastodonUser, *, retries: int = 3) -> Iterator[Toot]:
     tries = retries + 1
     for current_try in range(tries):
         try:
             return _get_latest_toots(user)
         except MastodonRemoteUnavailable as e:
-            _logger.info("_get_latest_toots() failed. Retry now: the {} of {} tries.".format(current_try, tries))
+            _logger.info(
+                "_get_latest_toots() failed. Retry now: the {} of {} tries.".format(
+                    current_try, tries
+                )
+            )
             if current_try == retries:
                 raise e
     raise RuntimeError("Dont reach here")
@@ -79,12 +88,15 @@ class TootForwarderBot(object):
         tg_bot_token: str,
         target_chat_identifier: Union[int, str],
         mastodon_user: MastodonUser,
+        *,
+        disable_notification: bool = True,
     ) -> None:
         self.tg_bot_token = tg_bot_token
         self.target_chat_identifier = target_chat_identifier
         self.mastodon_user = mastodon_user
         self.last_checked_time = arrow.utcnow()
         self.mastodon_remote_available = False
+        self.disable_notification = disable_notification
         super().__init__()
 
 
@@ -93,17 +105,24 @@ def exact_all_text_from_html(s: str):
     return soup.get_text()
 
 
-def _send_mastodon_remote_error_notification(target_chat: Chat, e: MastodonRemoteUnavailable):
-    BASE_MESSAGE = "Could not contract {remote}.\n{reason}"
-    if e.error_type == 'timeout':
-        message = BASE_MESSAGE.format(remote=e.remote, reason="Timeout while contracting.")
-    elif e.error_type == 'network':
+def _send_mastodon_remote_error_notification(
+    target_chat: Chat, e: MastodonRemoteUnavailable, disable_notification: bool
+):
+    BASE_MESSAGE = "Could not contract {remote}.\n\n{reason}"
+    if e.error_type == "timeout":
+        message = BASE_MESSAGE.format(
+            remote=e.remote, reason="Timeout while contracting."
+        )
+    elif e.error_type == "network":
         message = BASE_MESSAGE.format(remote=e.remote, reason="Network problem.")
-    elif e.error_type == 'http_status':
-        message = BASE_MESSAGE.format(remote=e.remote, reason="Unexecpted result status")
+    elif e.error_type == "http_status":
+        message = BASE_MESSAGE.format(
+            remote=e.remote, reason="Unexecpted result status."
+        )
     else:
+        message = BASE_MESSAGE.format(remote=e.remote, reason="Unknown error.")
         raise RuntimeError("Unsupported error")
-    target_chat.send_message(message)
+    target_chat.send_message(message, disable_notification=disable_notification)
 
 
 def _make_checking_and_forwarding_job_callback(
@@ -127,16 +146,21 @@ def _make_checking_and_forwarding_job_callback(
                     forwarded += 1
                     target_chat.send_message(
                         "{content}\n\n{link}".format(
-                            content=exact_all_text_from_html(toot.content), link=toot.url
+                            content=exact_all_text_from_html(toot.content),
+                            link=toot.url,
                         ),
-                        disable_notification=True,
+                        disable_notification=bot.disable_notification,
                     )
                     bot.last_checked_time = toot.created_at
                 else:
                     skipped += 1
         except MastodonRemoteUnavailable as e:
-            if bot.mastodon_remote_available: # Don't send notification if the remote have been unavailable
-                _send_mastodon_remote_error_notification(target_chat, e)
+            if (
+                bot.mastodon_remote_available
+            ):  # Don't send notification if the remote have been unavailable
+                _send_mastodon_remote_error_notification(
+                    target_chat, e, disable_notification=bot.disable_notification
+                )
             bot.mastodon_remote_available = False
             _logger.error("Mastodon remote is unavailable? %s", e.remote, exc_info=e)
         _logger.info(

@@ -39,13 +39,28 @@ import logging
     envvar="TARGET_CHAT_ID",
 )
 @click.option(
-    '--verbose/--no-verbose',
-    'verbose',
+    "--verbose/--no-verbose",
+    "verbose",
     help="Print out more verbose debugging message.",
     type=bool,
     default=False,
 )
-def toot4warder(mastodon_instance, mastodon_id, tg_bot_token, target_chat_id, verbose: bool):
+@click.option(
+    "--disable-notification/--enable-notification",
+    "disable_notification",
+    help="should the telegram message have notification",
+    type=bool,
+    default=True,
+    envvar="DISABLE_NOTIFICATION",
+)
+def toot4warder(
+    mastodon_instance,
+    mastodon_id,
+    tg_bot_token,
+    target_chat_id,
+    verbose: bool,
+    disable_notification: bool,
+):
     logging.basicConfig(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         level=logging.DEBUG if verbose else logging.INFO,
@@ -58,6 +73,7 @@ def toot4warder(mastodon_instance, mastodon_id, tg_bot_token, target_chat_id, ve
         tg_bot_token,
         target_chat_id,
         user,
+        disable_notification=disable_notification,
     )
     updater = create_updater(bot)
     updater.start_polling()
