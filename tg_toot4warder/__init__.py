@@ -135,8 +135,9 @@ def _make_checking_and_forwarding_job_callback(
                 else:
                     skipped += 1
         except MastodonRemoteUnavailable as e:
+            if bot.mastodon_remote_available: # Don't send notification if the remote have been unavailable
+                _send_mastodon_remote_error_notification(target_chat, e)
             bot.mastodon_remote_available = False
-            _send_mastodon_remote_error_notification(target_chat, e)
             _logger.error("Mastodon remote is unavailable? %s", e.remote, exc_info=e)
         _logger.info(
             "Done! Total/Forwarded/Skipped: {}/{}/{}.".format(total, forwarded, skipped)
