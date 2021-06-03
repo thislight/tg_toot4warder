@@ -1,0 +1,10 @@
+[Unit]
+Description="tg_toot4warder Toot Forwarder for Telegram"
+
+[Service]
+Type=exec
+EnvironmentFile=/path/to/tg_toot4warder.env
+ExecStart=tg_toot4warder --instance $MASTODON_INSTANCE --id $MASTODON_ID --bot-token $BOT_TOKEN --target-chat $TARGET_CHAT
+
+[Install]
+WantedBy=multi-user.target
