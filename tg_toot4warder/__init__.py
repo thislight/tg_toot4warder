@@ -10,7 +10,6 @@ from telegram.chat import Chat
 from telegram.ext import Updater
 from telegram.ext.callbackcontext import CallbackContext
 
-A_MINUTE = 60
 
 _logger = logging.getLogger("tg_toot4warder")
 
@@ -18,7 +17,7 @@ _logger = logging.getLogger("tg_toot4warder")
 class MastodonUser(object):
     def __init__(self, mastodon_base_uri: str, mastodon_id: str) -> None:
         self.mastodon_id = mastodon_id
-        self.api_http_client = Client(base_url=f"{mastodon_base_uri}/api/", timeout=10)
+        self.api_http_client = Client(base_url="{}/api/".format(mastodon_base_uri), timeout=10)
         super().__init__()
 
 
@@ -40,7 +39,7 @@ class MastodonRemoteUnavailable(Exception):
 def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
     try:
         statuses_http_response = user.api_http_client.get(
-            f"v1/accounts/{user.mastodon_id}/statuses"
+            "v1/accounts/{}/statuses".format(user.mastodon_id)
         )
         statuses_http_response.raise_for_status()
     except httpx.TimeoutException as e:

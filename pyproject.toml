@@ -6,7 +6,7 @@ authors = ["thisLight <l1589002388@gmail.com>"]
 license = "AGPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.7,<4"
 python-telegram-bot = {extras = ["ujson"], version = "^13.5"}
 httpx = "^0.18.1"
 python-dateutil = "^2.8.1"
