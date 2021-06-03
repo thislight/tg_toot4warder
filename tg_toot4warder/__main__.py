@@ -90,5 +90,9 @@ def toot4warder(
     updater.idle()
 
 
-if __name__ == "__main__":
+def main():
     toot4warder()
+
+
+if __name__ == "__main__":
+    main()
