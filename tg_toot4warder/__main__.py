@@ -1,4 +1,5 @@
 import os
+from typing import Union
 import click
 from tg_toot4warder import create_updater, MastodonUser, TootForwarderBot
 
@@ -62,10 +63,10 @@ import logging
     default=60,
 )
 def toot4warder(
-    mastodon_instance,
-    mastodon_id,
-    tg_bot_token,
-    target_chat_id,
+    mastodon_instance: str,
+    mastodon_id: int,
+    tg_bot_token: str,
+    target_chat_id: str,
     verbose: bool,
     disable_notification: bool,
     toots_polling_interval: int,
@@ -74,13 +75,17 @@ def toot4warder(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         level=logging.DEBUG if verbose else logging.INFO,
     )
+    if not target_chat_id.startswith('@'):
+        real_target_chat_id: Union[str, int] = int(target_chat_id)
+    else:
+        real_target_chat_id = target_chat_id
     user = MastodonUser(
         mastodon_instance,
         mastodon_id,
     )
     bot = TootForwarderBot(
         tg_bot_token,
-        target_chat_id,
+        real_target_chat_id,
         user,
         disable_notification=disable_notification,
         toots_polling_interval=toots_polling_interval,
