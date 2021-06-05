@@ -3,14 +3,12 @@ A toot forwarder for telegram channel.
 
 ## How to use
 
-0. Install poetry
-1. `poetry install`
-2. Set environment variables:
-    - `MASTODON_INSTANCE` for instance address. For example `https://mastodon.social`.
-    - `MASTODON_ID`: your unique id in the instance. It's a integer, you may find it on your profile page's uri.
-    - `BOT_TOKEN`: telegram bot access token.
-    - `TARGET_CHAT_ID`: the channel's identitifer, currently only username (include the prefixed `@`).
-3. Run the bot: `poetry run python -m tg_toot4warder`.
+0. Install [poetry](https://python-poetry.rog) & move to the project root
+1. `poetry build`
+2. `pip install dist/tg_toot4warder-*.whl` to install tg_toot4warder system-wide. 
+3. Run `tg_toot4warder --help` to see options.
+
+Systemd unit sample could be found in "systemd-unit".
 
 ## License
 AGPL-3.0-or-later
