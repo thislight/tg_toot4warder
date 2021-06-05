@@ -81,7 +81,7 @@ def toot4warder(
         real_target_chat_id = target_chat_id
     user = MastodonUser(
         mastodon_instance,
-        mastodon_id,
+        str(mastodon_id),
     )
     bot = TootForwarderBot(
         tg_bot_token,
