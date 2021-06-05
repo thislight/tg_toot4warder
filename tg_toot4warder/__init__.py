@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, Iterator, Union
+from typing import Any, Dict, Iterator, Optional, Union
 
 import arrow
 import httpx
@@ -17,8 +17,17 @@ _logger = logging.getLogger("tg_toot4warder")
 class MastodonUser(object):
     def __init__(self, mastodon_base_uri: str, mastodon_id: str) -> None:
         self.mastodon_id = mastodon_id
-        self.api_http_client = Client(base_url="{}/api/".format(mastodon_base_uri), timeout=10)
+        self.api_http_client = Client(
+            base_url="{}/api/".format(mastodon_base_uri), timeout=10
+        )
         super().__init__()
+
+
+@dataclass
+class Account(object):
+    id: str
+    acct: str
+    display_name: str
 
 
 @dataclass
@@ -27,6 +36,23 @@ class Toot(object):
     created_at: arrow.Arrow
     content: str
     url: str
+    account: Account
+    reblog: Optional["Toot"] = None
+
+
+def parse_account(el: Dict[str, Any]) -> Account:
+    return Account(id=el["id"], acct=el["acct"], display_name=el["display_name"])
+
+
+def parse_toot(el: Dict[str, Any]) -> Toot:
+    return Toot(
+        id=el["id"],
+        created_at=arrow.get(el["created_at"]),
+        content=el["content"],
+        url=el["url"],
+        account=parse_account(el["account"]),
+        reblog=parse_toot(el["reblog"]) if "reblog" in el else None,
+    )
 
 
 class MastodonRemoteUnavailable(Exception):
@@ -57,12 +83,7 @@ def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
     statuses_response: list[dict[str, Any]] = statuses_http_response.json()
     assert isinstance(statuses_response, list)
     for el in statuses_response:
-        yield Toot(
-            id=el["id"],
-            created_at=arrow.get(el["created_at"]),
-            content=el["content"],
-            url=el["url"],
-        )
+        yield parse_toot(el)
 
 
 def get_latest_toots(user: MastodonUser, *, retries: int = 3) -> Iterator[Toot]:
@@ -89,7 +110,7 @@ class TootForwarderBot(object):
         mastodon_user: MastodonUser,
         *,
         disable_notification: bool = True,
-        toots_polling_interval: int = 60, # in seconds
+        toots_polling_interval: int = 60,  # in seconds
     ) -> None:
         self.tg_bot_token = tg_bot_token
         self.target_chat_identifier = target_chat_identifier
@@ -126,6 +147,27 @@ def _send_mastodon_remote_error_notification(
     target_chat.send_message(message, disable_notification=disable_notification)
 
 
+def forward_toot(target_chat: Chat, toot: Toot, *, disable_notification: bool = False):
+    TEMPLATE_NOREBLOG = "{content}\n\n{link}"
+    TEMPLATE_REBLOG = "{content}\n\nRetooted from {original_user_display_name}.\n{link}"
+    toot_text_content = exact_all_text_from_html(toot.content)
+    if toot.reblog:
+        text_message = TEMPLATE_REBLOG.format(
+            content=toot_text_content,
+            link=toot.reblog.url,
+            original_user_display_name=toot.reblog.account.display_name,
+        )
+    else:
+        text_message = TEMPLATE_NOREBLOG.format(
+            content=toot_text_content,
+            link=toot.url,
+        )
+    target_chat.send_message(
+        text_message,
+        disable_notification=disable_notification,
+    )
+
+
 def _make_checking_and_forwarding_job_callback(
     bot: TootForwarderBot, target_chat: Chat
 ):
@@ -144,12 +186,8 @@ def _make_checking_and_forwarding_job_callback(
                 if toot.created_at > bot.last_checked_time:
                     _logger.info("Forwarding %s.", toot)
                     forwarded += 1
-                    target_chat.send_message(
-                        "{content}\n\n{link}".format(
-                            content=exact_all_text_from_html(toot.content),
-                            link=toot.url,
-                        ),
-                        disable_notification=bot.disable_notification,
+                    forward_toot(
+                        target_chat, toot, disable_notification=bot.disable_notification
                     )
                     bot.last_checked_time = toot.created_at
                 else:
