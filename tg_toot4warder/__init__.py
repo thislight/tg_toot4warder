@@ -51,7 +51,7 @@ def parse_toot(el: Dict[str, Any]) -> Toot:
         content=el["content"],
         url=el["url"],
         account=parse_account(el["account"]),
-        reblog=parse_toot(el["reblog"]) if "reblog" in el else None,
+        reblog=parse_toot(el["reblog"]) if el.get('reblog', None) else None,
     )
 
 
