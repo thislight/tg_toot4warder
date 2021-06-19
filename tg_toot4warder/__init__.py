@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+import time
 from typing import Any, Dict, Iterator, Optional, Union
 
 import arrow
@@ -10,16 +11,19 @@ from telegram.chat import Chat
 from telegram.ext import Updater
 from telegram.ext.callbackcontext import CallbackContext
 
+from . import remote_measurement
+
 
 _logger = logging.getLogger("tg_toot4warder")
 
 
 class MastodonUser(object):
-    def __init__(self, mastodon_base_uri: str, mastodon_id: str) -> None:
+    def __init__(self, mastodon_base_uri: str, mastodon_id: str, remote_measurement_records_n: int) -> None:
         self.mastodon_id = mastodon_id
         self.api_http_client = Client(
             base_url="{}/api/".format(mastodon_base_uri), timeout=10
         )
+        self.remote_measurement = remote_measurement.RemoteMeasurement(remote_measurement_records_n)
         super().__init__()
 
 
@@ -61,27 +65,55 @@ class MastodonRemoteUnavailable(Exception):
         self.error_type = error_type
         super().__init__(remote, "service unavaliable")
 
+def _push_failing_measurement_data(user: MastodonUser, requesting_time: arrow.Arrow, t1: float):
+    remote_measurement.push_data(user.remote_measurement, remote_measurement.MeasurementData(
+            time=requesting_time,
+            responded=False,
+            success=False,
+            time_cost=time.perf_counter()-t1,
+        ))
+
 
 def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
+    requesting_time = arrow.get()
     try:
+        t1 = time.perf_counter()
         statuses_http_response = user.api_http_client.get(
             "v1/accounts/{}/statuses".format(user.mastodon_id)
         )
         statuses_http_response.raise_for_status()
     except httpx.TimeoutException as e:
+        _push_failing_measurement_data(user, requesting_time, t1)
         raise MastodonRemoteUnavailable(
             str(user.api_http_client.base_url), "timeout"
-        ) from e
+        ) from e        
     except httpx.NetworkError as e:
+        _push_failing_measurement_data(user, requesting_time, t1)
         raise MastodonRemoteUnavailable(
             str(user.api_http_client.base_url), "network"
         ) from e
     except httpx.HTTPStatusError as e:
+        _push_failing_measurement_data(user, requesting_time, t1)
         raise MastodonRemoteUnavailable(
             str(user.api_http_client.base_url), "http_status"
         ) from e
     statuses_response: list[dict[str, Any]] = statuses_http_response.json()
-    assert isinstance(statuses_response, list)
+    try:
+        assert isinstance(statuses_response, list)
+    except AssertionError as e:
+        remote_measurement.push_data(user.remote_measurement, remote_measurement.MeasurementData(
+            time=requesting_time,
+            responded=True,
+            success=False,
+            time_cost=time.perf_counter()-t1,
+        ))
+        raise e
+    remote_measurement.push_data(user.remote_measurement, remote_measurement.MeasurementData(
+            time=requesting_time,
+            responded=True,
+            success=True,
+            time_cost=time.perf_counter()-t1,
+        ))
     for el in statuses_response:
         yield parse_toot(el)
 
