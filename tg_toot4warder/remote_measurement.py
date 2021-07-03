@@ -20,10 +20,12 @@ class RemoteMeasurement(object):
 def push_data(rmeasurement: RemoteMeasurement, data: MeasurementData) -> None:
     rmeasurement.data.append(data)
     while len(rmeasurement.data) > rmeasurement.item_limits:
-        rmeasurement.data.pop()
+        rmeasurement.data.pop(0)
 
 def maintains(rmeasurement: RemoteMeasurement) -> None:
     rmeasurement.data.sort(key= lambda d: d.time)
+    while len(rmeasurement.data) > rmeasurement.item_limits:
+        rmeasurement.data.pop(0)
 
 def time_range_start(rmeasurement: RemoteMeasurement) -> arrow.Arrow:
     return rmeasurement.data[0].time

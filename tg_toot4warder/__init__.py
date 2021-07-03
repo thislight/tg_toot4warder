@@ -18,12 +18,19 @@ _logger = logging.getLogger("tg_toot4warder")
 
 
 class MastodonUser(object):
-    def __init__(self, mastodon_base_uri: str, mastodon_id: str, remote_measurement_records_n: int) -> None:
+    def __init__(
+        self,
+        mastodon_base_uri: str,
+        mastodon_id: str,
+        remote_measurement_records_n: int,
+    ) -> None:
         self.mastodon_id = mastodon_id
         self.api_http_client = Client(
             base_url="{}/api/".format(mastodon_base_uri), timeout=10
         )
-        self.remote_measurement = remote_measurement.RemoteMeasurement(remote_measurement_records_n)
+        self.remote_measurement = remote_measurement.RemoteMeasurement(
+            remote_measurement_records_n
+        )
         super().__init__()
 
 
@@ -55,7 +62,7 @@ def parse_toot(el: Dict[str, Any]) -> Toot:
         content=el["content"],
         url=el["url"],
         account=parse_account(el["account"]),
-        reblog=parse_toot(el["reblog"]) if el.get('reblog', None) else None,
+        reblog=parse_toot(el["reblog"]) if el.get("reblog", None) else None,
     )
 
 
@@ -65,13 +72,19 @@ class MastodonRemoteUnavailable(Exception):
         self.error_type = error_type
         super().__init__(remote, "service unavaliable")
 
-def _push_failing_measurement_data(user: MastodonUser, requesting_time: arrow.Arrow, t1: float):
-    remote_measurement.push_data(user.remote_measurement, remote_measurement.MeasurementData(
+
+def _push_failing_measurement_data(
+    user: MastodonUser, requesting_time: arrow.Arrow, t1: float
+):
+    remote_measurement.push_data(
+        user.remote_measurement,
+        remote_measurement.MeasurementData(
             time=requesting_time,
             responded=False,
             success=False,
-            time_cost=time.perf_counter()-t1,
-        ))
+            time_cost=time.perf_counter() - t1,
+        ),
+    )
 
 
 def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
@@ -86,7 +99,7 @@ def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
         _push_failing_measurement_data(user, requesting_time, t1)
         raise MastodonRemoteUnavailable(
             str(user.api_http_client.base_url), "timeout"
-        ) from e        
+        ) from e
     except httpx.NetworkError as e:
         _push_failing_measurement_data(user, requesting_time, t1)
         raise MastodonRemoteUnavailable(
@@ -101,19 +114,25 @@ def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
     try:
         assert isinstance(statuses_response, list)
     except AssertionError as e:
-        remote_measurement.push_data(user.remote_measurement, remote_measurement.MeasurementData(
-            time=requesting_time,
-            responded=True,
-            success=False,
-            time_cost=time.perf_counter()-t1,
-        ))
+        remote_measurement.push_data(
+            user.remote_measurement,
+            remote_measurement.MeasurementData(
+                time=requesting_time,
+                responded=True,
+                success=False,
+                time_cost=time.perf_counter() - t1,
+            ),
+        )
         raise e
-    remote_measurement.push_data(user.remote_measurement, remote_measurement.MeasurementData(
+    remote_measurement.push_data(
+        user.remote_measurement,
+        remote_measurement.MeasurementData(
             time=requesting_time,
             responded=True,
             success=True,
-            time_cost=time.perf_counter()-t1,
-        ))
+            time_cost=time.perf_counter() - t1,
+        ),
+    )
     for el in statuses_response:
         yield parse_toot(el)
 
@@ -227,13 +246,24 @@ def _make_checking_and_forwarding_job_callback(
             bot.mastodon_remote_available = True
         except MastodonRemoteUnavailable as e:
             if (
-                bot.mastodon_remote_available
-            ):  # Don't send notification if the remote have been unavailable
+                remote_measurement.total_success_possibility(bot.mastodon_user.remote_measurement) < 0.5
+            ) and (not bot.mastodon_remote_available):
                 _send_mastodon_remote_error_notification(
                     target_chat, e, disable_notification=bot.disable_notification
                 )
             bot.mastodon_remote_available = False
-            _logger.error("Mastodon remote is unavailable? %s", e.remote, exc_info=e)
+            _logger.error(
+                "Mastodon remote %s is unavailable? Responded %s%% (success %s%%) in %s to %s (as %s)",
+                e.remote,
+                remote_measurement.total_responded_possibility(
+                    bot.mastodon_user.remote_measurement
+                ),
+                remote_measurement.total_success_possibility(bot.mastodon_user.remote_measurement),
+                remote_measurement.time_range_start(bot.mastodon_user.remote_measurement),
+                remote_measurement.time_range_end(bot.mastodon_user.remote_measurement),
+                remote_measurement.time_delta(bot.mastodon_user.remote_measurement),
+                exc_info=e,
+            )
         _logger.info(
             "Done! Total/Forwarded/Skipped: {}/{}/{}.".format(total, forwarded, skipped)
         )
