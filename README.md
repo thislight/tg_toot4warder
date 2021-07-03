@@ -10,5 +10,7 @@ A toot forwarder for telegram channel.
 
 Systemd unit sample could be found in "systemd-unit".
 
+Here is tutorial: [How to setup tg_toot4warder](./docs/setup.md).
+
 ## License
 AGPL-3.0-or-later
