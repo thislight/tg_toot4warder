@@ -82,6 +82,7 @@ def toot4warder(
     user = MastodonUser(
         mastodon_instance,
         str(mastodon_id),
+        60,
     )
     bot = TootForwarderBot(
         tg_bot_token,
