@@ -175,7 +175,7 @@ class TootForwarderBot(object):
 
 def exact_all_text_from_html(s: str):
     soup = BeautifulSoup(s, "html.parser")
-    return soup.get_text()
+    return soup.get_text(separator='\n')
 
 
 def _send_mastodon_remote_error_notification(
