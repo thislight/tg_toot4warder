@@ -62,6 +62,14 @@ import logging
     envvar="TOOTS_POLLING_INTERVAL",
     default=60,
 )
+@click.option(
+    '--min-success-rate',
+    'min_success_rate',
+    type=float,
+    help="Send a notification message to target channel when success rate is less than this value, the default is 0.5. Should be >=0, <=1.",
+    envvar="MIN_SUCCESS_RATE",
+    default=0.5,
+)
 def toot4warder(
     mastodon_instance: str,
     mastodon_id: int,
@@ -70,6 +78,7 @@ def toot4warder(
     verbose: bool,
     disable_notification: bool,
     toots_polling_interval: int,
+    min_success_rate: float,
 ):
     logging.basicConfig(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -90,6 +99,7 @@ def toot4warder(
         user,
         disable_notification=disable_notification,
         toots_polling_interval=toots_polling_interval,
+        min_success_rate=min_success_rate,
     )
     updater = create_updater(bot)
     updater.start_polling()

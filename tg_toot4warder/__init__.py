@@ -162,6 +162,7 @@ class TootForwarderBot(object):
         *,
         disable_notification: bool = True,
         toots_polling_interval: int = 60,  # in seconds
+        min_success_rate: float = 0.5,
     ) -> None:
         self.tg_bot_token = tg_bot_token
         self.target_chat_identifier = target_chat_identifier
@@ -170,6 +171,7 @@ class TootForwarderBot(object):
         self.mastodon_remote_available = False
         self.disable_notification = disable_notification
         self.toots_polling_interval = toots_polling_interval
+        self.min_success_rate = min_success_rate
         super().__init__()
 
 
@@ -247,7 +249,7 @@ def _make_checking_and_forwarding_job_callback(
         except MastodonRemoteUnavailable as e:
             snapshot = remote_measurement.capture_measurement(bot.mastodon_user.remote_measurement)
             if (
-                snapshot.success_rate < 0.5
+                snapshot.success_rate < bot.min_success_rate
             ) and (not bot.mastodon_remote_available):
                 _send_mastodon_remote_error_notification(
                     target_chat, e, disable_notification=bot.disable_notification
