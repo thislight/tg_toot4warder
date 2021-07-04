@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import datetime
 import arrow
 
@@ -64,3 +64,28 @@ def maxmin_time_cost_data(rmeasurement: RemoteMeasurement) -> tuple[_MaxTimeCost
 def maxmin_time_cost(rmeasurement: RemoteMeasurement) -> tuple[_MaxTimeCost, _MinTimeCost]:
     max_cost_d, min_cost_d = maxmin_time_cost_data(rmeasurement)
     return max_cost_d.time_cost, min_cost_d.time_cost
+
+@dataclass
+class MeasurementSnapshot(object):
+    time_start: arrow.Arrow
+    time_end: arrow.Arrow
+    time_delta: datetime.timedelta
+    responded_rate: float
+    success_rate: float
+    average_time_cost: float
+    max_time_cost: float
+    min_time_cost: float
+    generated_at: arrow.Arrow = field(default_factory=lambda: arrow.get())
+
+def capture_measurement(rmeas: RemoteMeasurement) -> MeasurementSnapshot:
+    max_time_cost, min_time_cost = maxmin_time_cost(rmeas)
+    return MeasurementSnapshot(
+        time_start=time_range_start(rmeas),
+        time_end=time_range_end(rmeas),
+        time_delta=time_delta(rmeas),
+        responded_rate=total_responded_possibility(rmeas),
+        success_rate=total_success_possibility(rmeas),
+        average_time_cost=average_time_cost(rmeas),
+        max_time_cost=max_time_cost,
+        min_time_cost=min_time_cost,
+    )
