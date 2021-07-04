@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import datetime
+from typing import Callable, Optional, TypeVar, cast
 import arrow
 
 TimeCost = float
@@ -10,6 +11,7 @@ class MeasurementData(object):
     responded: bool
     success: bool
     time_cost: TimeCost
+    error_type: Optional[str] = None
 
 class RemoteMeasurement(object):
     def __init__(self, maxitems: int) -> None:
@@ -50,6 +52,26 @@ def average_time_cost(rmeasurement: RemoteMeasurement) -> float:
     total_data_n = len(rmeasurement.data)
     total_cost = sum([d.time_cost for d in rmeasurement.data])
     return total_cost / total_data_n
+
+def group_by_error_type(rmeas: RemoteMeasurement) -> dict[Optional[str], list[MeasurementData]]:
+    d: dict[Optional[str], list[MeasurementData]] = dict()
+    for x in rmeas.data:
+        if not d.get(x.error_type):
+            d[x.error_type] = []
+        d[x.error_type].append(x)
+    return d
+
+def the_most_happened_error_type(rmeas: RemoteMeasurement) -> Optional[tuple[str, int]]:
+    groups = group_by_error_type(rmeas)
+    countings: dict[Optional[str], int] = dict()
+    for k in groups:
+        if k:
+            countings[k] = len(groups[k])
+    kvpair_list = list(countings.items())
+    if not kvpair_list:
+        return None
+    kvpair_list.sort(key=lambda kvp: kvp[1], reverse=True)
+    return cast(tuple[str, int], kvpair_list[0])
 
 _MaxTimeCostMeasurementData = MeasurementData
 _MinTimeCostMeasurementData = MeasurementData
