@@ -252,7 +252,8 @@ def _make_checking_and_forwarding_job_callback(
                 _send_mastodon_remote_error_notification(
                     target_chat, e, disable_notification=bot.disable_notification
                 )
-            bot.mastodon_remote_available = False
+            if e.error_type != "timeout": # Rubicon: timeout does not mean remote is down
+                bot.mastodon_remote_available = False
             _logger.error(
                 "Mastodon remote %s is unavailable? Responded %s%% (success %s%%) in %s to %s (as %s)",
                 e.remote,
