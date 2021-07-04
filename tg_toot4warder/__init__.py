@@ -265,7 +265,13 @@ def _make_checking_and_forwarding_job_callback(
                 exc_info=e,
             )
         _logger.info(
-            "Done! Total/Forwarded/Skipped: {}/{}/{}.".format(total, forwarded, skipped)
+            "Done! Total/Forwarded/Skipped: {}/{}/{}. Success rate/Responded rate/Avg. time cost: {}/{}/{}ms in {}".format(
+                total, forwarded, skipped,
+                remote_measurement.total_success_possibility(bot.mastodon_user.remote_measurement),
+                remote_measurement.total_responded_possibility(bot.mastodon_user.remote_measurement),
+                remote_measurement.average_time_cost(bot.mastodon_user.remote_measurement),
+                remote_measurement.time_delta(bot.mastodon_user.remote_measurement),
+            )
         )
 
     return _checking_and_forwarding_job
