@@ -74,7 +74,7 @@ class MastodonRemoteUnavailable(Exception):
 
 
 def _push_failing_measurement_data(
-    user: MastodonUser, requesting_time: arrow.Arrow, t1: float
+    user: MastodonUser, requesting_time: arrow.Arrow, t1: float, error_type: str,
 ):
     remote_measurement.push_data(
         user.remote_measurement,
@@ -83,6 +83,7 @@ def _push_failing_measurement_data(
             responded=False,
             success=False,
             time_cost=time.perf_counter() - t1,
+            error_type=error_type,
         ),
     )
 
@@ -96,17 +97,17 @@ def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
         )
         statuses_http_response.raise_for_status()
     except httpx.TimeoutException as e:
-        _push_failing_measurement_data(user, requesting_time, t1)
+        _push_failing_measurement_data(user, requesting_time, t1, "timeout")
         raise MastodonRemoteUnavailable(
             str(user.api_http_client.base_url), "timeout"
         ) from e
     except httpx.NetworkError as e:
-        _push_failing_measurement_data(user, requesting_time, t1)
+        _push_failing_measurement_data(user, requesting_time, t1, "network")
         raise MastodonRemoteUnavailable(
             str(user.api_http_client.base_url), "network"
         ) from e
     except httpx.HTTPStatusError as e:
-        _push_failing_measurement_data(user, requesting_time, t1)
+        _push_failing_measurement_data(user, requesting_time, t1, "http_status")
         raise MastodonRemoteUnavailable(
             str(user.api_http_client.base_url), "http_status"
         ) from e
@@ -121,6 +122,7 @@ def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
                 responded=True,
                 success=False,
                 time_cost=time.perf_counter() - t1,
+                error_type="response_format_wrong"
             ),
         )
         raise e
