@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 import time
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 import arrow
 import httpx
@@ -114,7 +114,7 @@ def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
         raise MastodonRemoteUnavailable(
             str(user.api_http_client.base_url), "http_status"
         ) from e
-    statuses_response: list[dict[str, Any]] = statuses_http_response.json()
+    statuses_response: List[Dict[str, Any]] = statuses_http_response.json()
     try:
         assert isinstance(statuses_response, list)
     except AssertionError as e:
