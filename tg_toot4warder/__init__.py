@@ -245,8 +245,9 @@ def _make_checking_and_forwarding_job_callback(
                     skipped += 1
             bot.mastodon_remote_available = True
         except MastodonRemoteUnavailable as e:
+            snapshot = remote_measurement.capture_measurement(bot.mastodon_user.remote_measurement)
             if (
-                remote_measurement.total_success_possibility(bot.mastodon_user.remote_measurement) < 0.5
+                snapshot.success_rate < 0.5
             ) and (not bot.mastodon_remote_available):
                 _send_mastodon_remote_error_notification(
                     target_chat, e, disable_notification=bot.disable_notification
@@ -255,22 +256,16 @@ def _make_checking_and_forwarding_job_callback(
             _logger.error(
                 "Mastodon remote %s is unavailable? Responded %s%% (success %s%%) in %s to %s (as %s)",
                 e.remote,
-                remote_measurement.total_responded_possibility(
-                    bot.mastodon_user.remote_measurement
-                ),
-                remote_measurement.total_success_possibility(bot.mastodon_user.remote_measurement),
-                remote_measurement.time_range_start(bot.mastodon_user.remote_measurement),
-                remote_measurement.time_range_end(bot.mastodon_user.remote_measurement),
-                remote_measurement.time_delta(bot.mastodon_user.remote_measurement),
+                snapshot.responded_rate,
+                snapshot.success_rate,
+                snapshot.time_start,
+                snapshot.time_end,
+                snapshot.time_delta,
                 exc_info=e,
             )
         _logger.info(
-            "Done! Total/Forwarded/Skipped: {}/{}/{}. Success rate/Responded rate/Avg. time cost: {}/{}/{}ms in {}".format(
-                total, forwarded, skipped,
-                remote_measurement.total_success_possibility(bot.mastodon_user.remote_measurement),
-                remote_measurement.total_responded_possibility(bot.mastodon_user.remote_measurement),
-                remote_measurement.average_time_cost(bot.mastodon_user.remote_measurement),
-                remote_measurement.time_delta(bot.mastodon_user.remote_measurement),
+            "Done! Total/Forwarded/Skipped: {}/{}/{}. {}".format(
+                total, forwarded, skipped, remote_measurement.capture_measurement(bot.mastodon_user.remote_measurement)
             )
         )
 
