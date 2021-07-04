@@ -17,6 +17,7 @@ arrow = "^1.1.0"
 [tool.poetry.dev-dependencies]
 mypy = "^0.812"
 black = "^21.5b2"
+pre-commit = "^2.13.0"
 
 [tool.poetry.scripts]
 tg_toot4warder = "tg_toot4warder.__main__:main"
