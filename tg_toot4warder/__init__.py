@@ -74,7 +74,10 @@ class MastodonRemoteUnavailable(Exception):
 
 
 def _push_failing_measurement_data(
-    user: MastodonUser, requesting_time: arrow.Arrow, t1: float, error_type: str,
+    user: MastodonUser,
+    requesting_time: arrow.Arrow,
+    t1: float,
+    error_type: str,
 ):
     remote_measurement.push_data(
         user.remote_measurement,
@@ -122,7 +125,7 @@ def _get_latest_toots(user: MastodonUser) -> Iterator[Toot]:
                 responded=True,
                 success=False,
                 time_cost=time.perf_counter() - t1,
-                error_type="response_format_wrong"
+                error_type="response_format_wrong",
             ),
         )
         raise e
@@ -179,7 +182,7 @@ class TootForwarderBot(object):
 
 def exact_all_text_from_html(s: str):
     soup = BeautifulSoup(s, "html.parser")
-    return soup.get_text(separator='\n')
+    return soup.get_text(separator="\n")
 
 
 def _send_mastodon_remote_error_notification(
@@ -249,14 +252,24 @@ def _make_checking_and_forwarding_job_callback(
                     skipped += 1
             bot.mastodon_remote_available = True
         except MastodonRemoteUnavailable as e:
-            snapshot = remote_measurement.capture_measurement(bot.mastodon_user.remote_measurement)
-            if (
-                snapshot.success_rate < bot.min_success_rate
-            ) and (not bot.mastodon_remote_available):
+            snapshot = remote_measurement.capture_measurement(
+                bot.mastodon_user.remote_measurement
+            )
+            if (snapshot.success_rate < bot.min_success_rate) and (
+                not bot.mastodon_remote_available
+            ):
                 _send_mastodon_remote_error_notification(
                     target_chat, e, disable_notification=bot.disable_notification
                 )
-            if e.error_type != "timeout": # Rubicon: timeout does not mean remote is down
+            if (
+                e.error_type != "timeout"
+            ):  # Rubicon: timeout does not mean remote is down
+                bot.mastodon_remote_available = False
+            elif (
+                snapshot.the_most_happened_error_type == "timeout"
+                and snapshot.the_most_happened_error_rate
+                and snapshot.the_most_happened_error_rate >= 0.8
+            ):
                 bot.mastodon_remote_available = False
             _logger.error(
                 "Mastodon remote %s is unavailable? Responded %s%% (success %s%%) in %s to %s (as %s)",
@@ -270,7 +283,12 @@ def _make_checking_and_forwarding_job_callback(
             )
         _logger.info(
             "Done! Total/Forwarded/Skipped: {}/{}/{}. {}".format(
-                total, forwarded, skipped, remote_measurement.capture_measurement(bot.mastodon_user.remote_measurement)
+                total,
+                forwarded,
+                skipped,
+                remote_measurement.capture_measurement(
+                    bot.mastodon_user.remote_measurement
+                ),
             )
         )
 
