@@ -61,17 +61,28 @@ def group_by_error_type(rmeas: RemoteMeasurement) -> dict[Optional[str], list[Me
         d[x.error_type].append(x)
     return d
 
-def the_most_happened_error_type(rmeas: RemoteMeasurement) -> Optional[tuple[str, int]]:
+def error_happened_times(rmeas: RemoteMeasurement) -> dict[str, int]:
     groups = group_by_error_type(rmeas)
-    countings: dict[Optional[str], int] = dict()
+    countings: dict[str, int] = dict()
     for k in groups:
         if k:
             countings[k] = len(groups[k])
+    return countings
+
+def the_most_happened_error_type(rmeas: RemoteMeasurement) -> Optional[tuple[str, int]]:
+    countings = error_happened_times(rmeas)
     kvpair_list = list(countings.items())
     if not kvpair_list:
         return None
     kvpair_list.sort(key=lambda kvp: kvp[1], reverse=True)
-    return cast(tuple[str, int], kvpair_list[0])
+    return kvpair_list[0]
+
+def error_rate_of_type(rmeas: RemoteMeasurement, errt: str) -> Optional[float]:
+    countings = error_happened_times(rmeas)
+    error_data_list = countings.get(errt, None)
+    if not error_data_list:
+        return None
+    return error_data_list / len(rmeas.data)
 
 _MaxTimeCostMeasurementData = MeasurementData
 _MinTimeCostMeasurementData = MeasurementData
@@ -97,10 +108,18 @@ class MeasurementSnapshot(object):
     average_time_cost: float
     max_time_cost: float
     min_time_cost: float
+    the_most_happened_error_type: Optional[str]
+    the_most_happened_error_rate: Optional[float]
     generated_at: arrow.Arrow = field(default_factory=lambda: arrow.get())
 
 def capture_measurement(rmeas: RemoteMeasurement) -> MeasurementSnapshot:
     max_time_cost, min_time_cost = maxmin_time_cost(rmeas)
+    the_most_happened_error_result = the_most_happened_error_type(rmeas)
+    if the_most_happened_error_result:
+        the_most_happened_error: Optional[str] = the_most_happened_error_result[0]
+    else:
+        the_most_happened_error = None
+    the_most_happened_error_rate = error_rate_of_type(rmeas, cast(str, the_most_happened_error)) if the_most_happened_error else None
     return MeasurementSnapshot(
         time_start=time_range_start(rmeas),
         time_end=time_range_end(rmeas),
@@ -110,4 +129,6 @@ def capture_measurement(rmeas: RemoteMeasurement) -> MeasurementSnapshot:
         average_time_cost=average_time_cost(rmeas),
         max_time_cost=max_time_cost,
         min_time_cost=min_time_cost,
+        the_most_happened_error_type=the_most_happened_error,
+        the_most_happened_error_rate=the_most_happened_error_rate,
     )
