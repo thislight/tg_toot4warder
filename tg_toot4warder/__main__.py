@@ -63,8 +63,8 @@ import logging
     default=60,
 )
 @click.option(
-    '--min-success-rate',
-    'min_success_rate',
+    "--min-success-rate",
+    "min_success_rate",
     type=float,
     help="Send a notification message to target channel when success rate is less than this value, the default is 0.5. Should be >=0, <=1.",
     envvar="MIN_SUCCESS_RATE",
@@ -84,7 +84,7 @@ def toot4warder(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         level=logging.DEBUG if verbose else logging.INFO,
     )
-    if not target_chat_id.startswith('@'):
+    if not target_chat_id.startswith("@"):
         real_target_chat_id: Union[str, int] = int(target_chat_id)
     else:
         real_target_chat_id = target_chat_id
