@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "tg_toot4warder"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 description = "Forwarding your toots to telegram channel"
 authors = ["thisLight <l1589002388@gmail.com>"]
 license = "AGPL-3.0-or-later"
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4"
-python-telegram-bot = {extras = ["ujson"], version = "^13.5"}
+aiogram = "^2.19"
 httpx = "^0.18.1"
 python-dateutil = "^2.8.1"
 beautifulsoup4 = "^4.9.3"
